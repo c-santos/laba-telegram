@@ -115,7 +115,7 @@ class Forecast:
                 self.now_forecast.update({'precipitation_probability': v[now_idx:next_idx]})
  
 
-    def process_forecast(self) -> bool:
+    def process_forecast(self, forecast: dict) -> bool:
         """
         TASK 2: Make sense of the 5-hour forecast data
         1. Check for specific weather windows and precipitation probability (pp).
@@ -131,7 +131,7 @@ class Forecast:
         score = 0
         decision = True
 
-        for wmo_code in self.now_forecast['weathercode']:
+        for wmo_code in forecast['weathercode']:
             score += wmo_code
             if wmo_code > 4:
                 decision = False
@@ -160,7 +160,7 @@ class Forecast:
 
         # print(self)
 
-        if self.process_forecast():
+        if self.process_forecast(self.now_forecast):
             text += 'Yes, you can laba right now.'
             return text
         else:
