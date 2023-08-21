@@ -3,3 +3,4 @@ config.py
 /.vscode
 tester.py
 __pycache__
+tasks.md

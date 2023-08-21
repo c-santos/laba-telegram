@@ -1,44 +1,5 @@
 # OpenMeteo time format ISO8601: "YYYY-MM-DDTHH:MM" where T is the separator
 
-# COMMANDS
-
-# /today: Tells if you can laba today, returns time window to laba
-# /now: Tells if you can laba now, returns best next time(?)
-
-# Immediately return false if later than 2pm.
-
-# TASK 1: Show weather stats in the next 5 hours
-# 1. Get current time in ISO8601 format
-# 2. Matching current time with hourly weather data (Times are in 24 hr format)
-# 3. Round up time if it's already >= 30 minutes in the hour.
-# 4. Return 5-hour forecast data
-
-# TASK 2: Make sense of the 5-hour forecast data
-# 1. Check for specific weather windows and precipitation probability (pp).
-#       a. Sunny - 3 hour window (wmo 0)
-#       b. Overcast - 5 hour window (wmo 3)
-#       c. Partly cloudy - 4 hour window (wmo 2)
-#       d. Mainly clear - 3 hour window (wmo 1)
-# 2. If pp > 0.5, do not count that hr
-# 3. If decision = true, return decision and time window
-# 4. If decision = false, return decision and next time window (optional)
-
-# TASK 3: For today command, find period of time where score < threshold
-# 
-# 
-
-# TODO Find way to dynamically change Open Meteo API key with location of user
-
-# OPTIONAL:
-# - If decision is false in /now command, give next time window
-# - Predict time needed to dry clothes
-#
-# /setlaundrydays: 
-# TASK 1: Laundry day notifications 
-# 1. Allow user to set 'laundry days'.
-# 2. Notify user if it is a good idea to wash clothes that day.
-#    Specifically, if there is a sunny 
-
 import requests, json
 from datetime import datetime
 from config import OPEN_METEO_KEY
