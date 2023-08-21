@@ -3,9 +3,8 @@
 # COMMANDS
 
 # /today: Tells if you can laba today, returns time window to laba
-
 # /now: Tells if you can laba now, returns best next time(?)
-# 
+
 # Immediately return false if later than 2pm.
 
 # TASK 1: Show weather stats in the next 5 hours
@@ -24,12 +23,17 @@
 # 3. If decision = true, return decision and time window
 # 4. If decision = false, return decision and next time window (optional)
 
-#
-# Optional:
-# - Predict time needed to dry clothes
+# TASK 3: For today command, find period of time where score < threshold
+# 
+# 
 
-# /setlaundrydays: 
+# TODO Find way to dynamically change Open Meteo API key with location of user
+
+# OPTIONAL:
+# - If decision is false in /now command, give next time window
+# - Predict time needed to dry clothes
 #
+# /setlaundrydays: 
 # TASK 1: Laundry day notifications 
 # 1. Allow user to set 'laundry days'.
 # 2. Notify user if it is a good idea to wash clothes that day.
