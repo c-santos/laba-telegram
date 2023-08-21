@@ -3,7 +3,7 @@
 # COMMANDS
 
 # /today: Tells if you can laba today, returns time window to laba
-#
+
 # /now: Tells if you can laba now, returns best next time(?)
 # 
 # Immediately return false if later than 2pm.
@@ -38,37 +38,9 @@
 import requests, json
 from datetime import datetime
 from config import OPEN_METEO_KEY
+from WMO_CODES import WMO_CODES
 
 LABA_THRESHOLD = 0.5 # 50% precipitation chance
-
-WMO_CODES = {
-    0: "Clear sky",
-    1: "Mainly clear",
-    2: "Partly cloudy",
-    3: "Overcast",
-    45: "Fog",
-    48: "Depositing rime fog",
-    51: "Drizzle: Light intensity",
-    53: "Drizzle: Moderate intensity",
-    55: "Drizzle: Dense intensity",
-    56: "Freezing drizzle: Light intensity",
-    57: "Freezing drizzle: Dense intensity",
-    61: "Rain: Slight intensity",
-    63: "Rain: Moderate intensity",
-    65: "Rain: Heavy intensity",
-    66: "Freezing rain: Light intensity",
-    67: "Freezing rain: Heavy intensity",
-    71: "Snow fall: Slight intensity",
-    73: "Snow fall: Moderate intensity",
-    75: "Snow fall: Heavy intensity",
-    77: "Snow grains",
-    80: "Rain showers: Slight intensity",
-    81: "Rain showers: Moderate intensity",
-    82: "Rain showers: Violent intensity",
-    85: "Snow showers: Slight intensity",
-    86: "Snow showers: Heavy intensity",
-    95: "Thunderstorm: Slight or moderate",
-}
 
 def jprint(obj):
     text = json.dumps(obj, sort_keys=True, indent=4)
@@ -76,7 +48,7 @@ def jprint(obj):
 
 def weather() -> dict:
     """
-    OpenMeteo API Call for hourly weather for the data.
+    OpenMeteo API Call to get 2 days worth of hourly weather data.
 
     Keys:
         'time',
@@ -106,11 +78,8 @@ def get_now_forecast(hourly_data) -> dict:
         next_idx = 5
         rounded_now = datetime(now.year, now.month, now.day, now.hour)
 
-    # print(f'ROUNDED_NOW : {rounded_now}')
-
-    # Convert datetime object to isoformat.
+    # Convert datetime object to isoformat. Removing seconds.
     iso_now = rounded_now.isoformat()[:-3]
-    # print(f'ISO_NOW : {iso_now}')
 
     # Find current time in hourly_data.
     now_idx = hourly_data['time'].index(iso_now)
@@ -156,7 +125,7 @@ def print_forecast(forecast: dict) -> None:
 
         print(f'{hr}\t{weather}\t{temp}\t{pp}')
 
-def process_forecast(forecast_dict):
+def process_now_forecast(forecast_dict):
     """
     TASK 2: Make sense of the 5-hour forecast data
      1. Check for specific weather windows and precipitation probability (pp).
@@ -189,12 +158,12 @@ def now():
     
     now = datetime.now()
 
-    if now.hour > 1:
+    if now.hour > 17 and now.hour < 6:
         return 'Laba tomorrow.'
     
     forecast = get_now_forecast(hourly_data)
     print_forecast(forecast)
-    if process_forecast(forecast):
+    if process_now_forecast(forecast):
         return 'Yes, you can laba right now.'
     else:
         return 'No, you can\'t laba right now'

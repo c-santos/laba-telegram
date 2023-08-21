@@ -1,7 +1,8 @@
 from typing import Final
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
-from weather import now
+# from weather import now
+from weatheroop import Forecast
 from config import TELEGRAM_TOKEN
 
 BOT_USERNAME: Final = '@canilababot'
@@ -12,7 +13,8 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text('Hello! I am the Laba Bot.')
 
 async def now_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    response_str: str = now()
+    forecast = Forecast()
+    response_str: str = forecast.now()
     await update.message.reply_text(response_str)
 
 
@@ -33,14 +35,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Logger
     print(f'User {update.message.chat.id} in {message_type}: "{text}"')
 
-    if message_type == 'group':
-        if BOT_USERNAME in text:
+    if message_type == 'group': # If bot is in a group chat
+        if BOT_USERNAME in text: # If bot is mentioned
             new_text: str = text.replace(BOT_USERNAME, '').strip()
             response: str = handle_response(new_text)
         else:
             return
     
-    else:
+    else: # If bot is in a private chat
         response: str = handle_response(text)
 
     print(f'Bot: {response}')
