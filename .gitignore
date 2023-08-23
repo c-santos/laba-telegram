@@ -4,3 +4,4 @@ config.py
 tester.py
 __pycache__
 tasks.md
+/.venv
