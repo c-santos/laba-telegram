@@ -14,6 +14,7 @@ BOT_USERNAME: Final = '@canilababot'
 
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Prompt user to select location in start prompt
     await update.message.reply_text(start.text)
 
 
@@ -28,10 +29,17 @@ async def today_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     response_str: str = forecast.today()
     await update.message.reply_text(response_str)
 
+# TODO Allow user to set location
+# async def setlocation_command()
+
+# TODO Allow user to set laundry days where they will be notified in the morning (calls /today command)
+# async def setlaundrydays_command()
+
 
 # Responses
 
-def handle_response(text: str) -> str:
+
+def handle_response(text: str) -> str:  # How bot replies
     text = text.lower()
 
     return text
@@ -75,6 +83,8 @@ if __name__ == '__main__':
     app.add_handler(CommandHandler('start', start_command))
     app.add_handler(CommandHandler('now', now_command))
     app.add_handler(CommandHandler('today', today_command))
+    # app.add_handler(CommandHandler('setlocation', setlocation_command))
+    # app.add_handler(CommandHandler('setlaundrydays', setlaundrydays_command))
 
     # Messages
     app.add_handler(MessageHandler(filters.TEXT, handle_message))
