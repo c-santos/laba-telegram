@@ -1,69 +1,52 @@
-import requests, json
-from datetime import datetime
+import json
+from datetime import datetime as dt
+
+import requests
+
 from config import OPEN_METEO_KEY
 from WMO_CODES import WMO_CODES
 
+# TODO Find better logic to determine if you can laba : can_laba()
+# TODO Let user choose location, right now it's hardcoded
+
+
 class Forecast:
-    
     def __init__(self) -> None:
-        self.forecast: dict = dict()
-        self.now_forecast: dict = dict()
+        self.forecast: dict = dict()  # 2-day forecast
+        self.now_forecast: dict = dict()  # forecast when now() is called
 
     def __str__(self) -> str:
-        text: str = 'FORECAST\n'
-        for i in range(len(self.forecast['time'])):
-            time = self.forecast['time'][i]
-            weather = WMO_CODES[self.forecast['weathercode'][i]]
-            temp = self.forecast['temperature_2m'][i]
-            pp = self.forecast['precipitation_probability'][i]
+        text: str = "FORECAST\n"
 
-            text += f'{time.split("T")[1]:<7}{temp}{" C":<3} {pp}{"%":<3}{weather}\n'
+        for i in range(len(self.forecast["time"])):
+            time = self.forecast["time"][i]
+            weather = WMO_CODES[self.forecast["weathercode"][i]]
+            temp = self.forecast["temperature_2m"][i]
+            pp = self.forecast["precipitation_probability"][i]
+
+            text += f'{time.split("T")[1]:<7}{temp}{" C":<3} {pp}{"%":<3} {weather}\n'
 
         return text
-        
+
     def display_forecast(self, forecast: dict) -> str:
         """
-            General printer function for forecasts.
+        General printer function for forecasts.
         """
-        text: str = 'FORECAST\n'
-        for i in range(len(forecast['time'])):
-            time = self.forecast['time'][i]
-            weather = WMO_CODES[self.forecast['weathercode'][i]]
-            temp = self.forecast['temperature_2m'][i]
-            pp = self.forecast['precipitation_probability'][i]
+        text: str = ''
 
-            text += f'{time.split("T")[1]}\t\t\t{temp} C\t\t\t{pp}%\t\t\t{weather}\n'
+        for i in range(len(forecast["time"])):
+            time = forecast["time"][i]
+            weather = WMO_CODES[forecast["weathercode"][i]]
+            temp = forecast["temperature_2m"][i]
+            pp = forecast["precipitation_probability"][i]
+
+            text += f'{time.split("T")[1]:<7}{temp}{" C":<3} {pp}{"%":<3} {weather}\n'
 
         return text
 
     def weather(self) -> None:
         """
-            OpenMeteo API Call to get 2 days worth of hourly weather data.
-
-            Keys:
-                'time',
-                'weathercode',
-                'temperature_2m',
-                'precipitation_probability'
-
-            Dictionary structure:
-            {
-                'time': [1,2,3,...],
-                'weathercode': [0,1,2,...],
-                'temperature_2m': [0,1,2,...],
-                'precipitation_probability': [0,1,2,..]
-            }
-        """
-        response = requests.get(OPEN_METEO_KEY)
-        hourly_data = response.json()['hourly']
-
-        self.forecast = hourly_data
-
-    def get_now_forecast(self) -> None:
-        """
-        Get weather data in the next 5 or 6 hrs (depending on minute). 
-
-        Populates self.now_forecast dictionary.
+        OpenMeteo API Call to get 2 days worth of hourly weather data.
 
         Keys:
             'time',
@@ -79,50 +62,40 @@ class Forecast:
             'precipitation_probability': [0,1,2,..]
         }
         """
+        response = requests.get(OPEN_METEO_KEY)
+        hourly_data = response.json()["hourly"]
 
-        self.weather() # Get fresh weather data
-        self.now_forecast = dict() # Reset self.now_forecast
+        self.forecast = hourly_data
 
-        now = datetime.now()
+    def extract_forecast(self, source: dict, start_idx: int, end_idx: int) -> dict:
+        '''
+        Extracts a new dictionary from source dictionary based on the start and end indices.
+        '''
+        extracted_forecast = dict()
 
-        # Round up hour, if > 30 minutes.
-        if now.minute > 30:
-            next_idx = 6
-            rounded_now = datetime(now.year, now.month, now.day, now.hour+1)
-        else:
-            next_idx = 5
-            rounded_now = datetime(now.year, now.month, now.day, now.hour)
-
-        # Convert datetime object to isoformat. Removing seconds.
-        iso_now = rounded_now.isoformat()[:-3]
-
-        # Find current time in hourly_data.
-        now_idx = self.forecast['time'].index(iso_now)
-
-        # Index range to get 5 or 6-hour forecast.
-        next_idx += now_idx
-
-        # Populate forecast dictionary
-        for (k, v) in self.forecast.items():
-            # print(k, v)
+        for k, v in source.items():
             if k == 'time':
-                self.now_forecast.update({'time': v[now_idx:next_idx]})
+                extracted_forecast.update({'time': v[start_idx:end_idx]})
             elif k == 'weathercode':
-                self.now_forecast.update({'weathercode': v[now_idx:next_idx]})
+                extracted_forecast.update(
+                    {'weathercode': v[start_idx:end_idx]})
             elif k == 'temperature_2m':
-                self.now_forecast.update({'temperature_2m': v[now_idx:next_idx]})
+                extracted_forecast.update(
+                    {'temperature_2m': v[start_idx:end_idx]})
             elif k == 'precipitation_probability':
-                self.now_forecast.update({'precipitation_probability': v[now_idx:next_idx]})
- 
+                extracted_forecast.update(
+                    {'precipitation_probability': v[start_idx:end_idx]})
 
-    def process_forecast(self, forecast: dict) -> bool:
+        return extracted_forecast
+
+    def can_laba(self, forecast: dict) -> bool:
         """
-        TASK 2: Make sense of the 5-hour forecast data
+        Make sense of the 5-hour forecast data
         1. Check for specific weather windows and precipitation probability (pp).
-            a. Sunny - 2 hour window (wmo 0)
-            b. Overcast - 5 hour window (wmo 3)
-            c. Partly cloudy - 4 hour window (wmo 2)
-            d. Mainly clear - 3 hour window (wmo 1)
+            Sunny - 2 hour window (wmo 0)
+            Mainly clear - 3 hour window (wmo 1)
+            Partly cloudy - 4 hour window (wmo 2)
+            Overcast - 5 hour window (wmo 3)
         2. If pp > 0.5, do not count that hr
         3. If decision = true, return decision and time window
         4. If decision = false, return decision and next time window (optional)
@@ -131,44 +104,79 @@ class Forecast:
         score = 0
         decision = True
 
-        for wmo_code in forecast['weathercode']:
+        for wmo_code in forecast["weathercode"]:
             score += wmo_code
+
             if wmo_code > 4:
                 decision = False
                 break
 
-        if score > 15: decision = False
+        if score > 15:
+            decision = False
 
-        print(f'Score: {score}\t Decision: {decision}')
+        print(f"Score: {score}\t Decision: {decision}\n")
 
         return decision
-    
+
     def now(self) -> str:
-        self.get_now_forecast()
+        self.weather()  # Get fresh weather data
+        self.now_forecast.clear()  # Reset self.now_forecast dictionary
 
-        text: str = self.display_forecast(self.now_forecast) + '\n'
-        now = datetime.now()
+        now = dt.now()  # Get current datetime
 
-        if now.hour > 17 or now.hour < 6:
-            if now.hour >= 0:
-                text += f'It\'s {now.hour}:00 AM. Check again later.'
-                return text
-            else: 
-                text += f'It\'s {now.hour}:00 PM. Laba tomorrow.'
-                return text
+        # Round up hour, if > 30 minutes.
+        if now.minute > 30:
+            next_idx = 6
+            rounded_now = dt(now.year, now.month, now.day, now.hour + 1)
+        else:
+            next_idx = 5
+            rounded_now = dt(now.year, now.month, now.day, now.hour)
 
+        # Convert datetime object to isoformat. Removing seconds.
+        iso_now = rounded_now.isoformat()[:-3]
 
-        # print(self)
+        # Find current time in forecast.
+        now_idx = self.forecast["time"].index(iso_now)
 
-        if self.process_forecast(self.now_forecast):
-            text += 'Yes, you can laba right now.'
+        next_idx += now_idx  # Index range to extract 5 or 6-hour forecast.
+
+        self.now_forecast = self.extract_forecast(
+            self.forecast, now_idx, next_idx)
+
+        # Display forecast
+        text: str = self.display_forecast(self.now_forecast) + "\n"
+
+        # Automatically return false if earlier than 06:00 or later than 15:00
+        if 0 <= now.hour < 6:
+            text += f"It's {now.hour}:{now.minute} AM. Check again later."
+            return text
+        elif 15 <= now.hour <= 23:
+            text += f"It's {now.hour-12}{{now.minute}}:00 PM. Laba tomorrow."
+            return text
+
+        # Can I laba now?
+        if self.can_laba(self.now_forecast):
+            text += "Yes, you can laba right now."
             return text
         else:
-            text += 'No, you can\'t laba right now'
+            text += "No, you can't laba right now"
             return text
 
-
     def today(self) -> None:
-        pass
+        self.weather()
 
-    
+        morning_forecast = self.extract_forecast(self.forecast, 6, 11)
+        noon_forecast = self.extract_forecast(self.forecast, 11, 15)
+
+        text = 'TODAY\'S FORECAST\n'
+
+        text += self.display_forecast(morning_forecast)
+        text += self.display_forecast(noon_forecast)
+
+        # Can I laba today?
+        if self.can_laba(morning_forecast) or self.can_laba(noon_forecast):
+            text += 'You can laba today!'
+            return text
+        else:
+            text += 'You cannot laba today. The clothes will never dry. Try again tomorrow.'
+            return text
