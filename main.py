@@ -1,20 +1,31 @@
 from typing import Final
+
 from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
-# from weather import now
-from weatheroop import Forecast
+from telegram.ext import (Application, CommandHandler, ContextTypes,
+                          MessageHandler, filters)
+
+from assets import start
 from config import TELEGRAM_TOKEN
+from weatheroop import Forecast
 
 BOT_USERNAME: Final = '@canilababot'
 
 # Commands
 
+
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text('Hello! I am the Laba Bot.')
+    await update.message.reply_text(start.text)
+
 
 async def now_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     forecast = Forecast()
     response_str: str = forecast.now()
+    await update.message.reply_text(response_str)
+
+
+async def today_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    forecast = Forecast()
+    response_str: str = forecast.today()
     await update.message.reply_text(response_str)
 
 
@@ -27,22 +38,23 @@ def handle_response(text: str) -> str:
 
 # Messages
 
+
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     message_type: str = update.message.chat.type
     text: str = update.message.text
-    
+
     # Logger
     print(f'User {update.message.chat.id} in {message_type}: "{text}"')
 
-    if message_type == 'group': # If bot is in a group chat
-        if BOT_USERNAME in text: # If bot is mentioned
+    if message_type == 'group':  # If bot is in a group chat
+        if BOT_USERNAME in text:  # If bot is mentioned
             new_text: str = text.replace(BOT_USERNAME, '').strip()
             response: str = handle_response(new_text)
         else:
             return
-    
-    else: # If bot is in a private chat
+
+    else:  # If bot is in a private chat
         response: str = handle_response(text)
 
     print(f'Bot: {response}')
@@ -50,6 +62,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(response)
 
 # Error
+
 
 async def error(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print(f'Update {update} caused error {context.error}')
@@ -61,6 +74,7 @@ if __name__ == '__main__':
     # Commands
     app.add_handler(CommandHandler('start', start_command))
     app.add_handler(CommandHandler('now', now_command))
+    app.add_handler(CommandHandler('today', today_command))
 
     # Messages
     app.add_handler(MessageHandler(filters.TEXT, handle_message))
