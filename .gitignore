@@ -2,6 +2,7 @@
 config.py
 /.vscode
 tester.py
+test.py
 __pycache__
 tasks.md
 /.venv
