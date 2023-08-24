@@ -150,10 +150,10 @@ class Forecast:
 
         # Automatically return false if earlier than 06:00 or later than 15:00
         if 0 <= now.hour < 6:
-            text += f"It's {now.hour}:{now.minute} AM. Check again later."
+            text += f"It's {now.hour} AM. Check again later."
             return text
         elif 15 <= now.hour <= 23:
-            text += f"It's {now.hour-12}{{now.minute}}:00 PM. Laba tomorrow."
+            text += f"It's {now.hour-12} PM. Laba tomorrow."
             return text
 
         # Can I laba now?
