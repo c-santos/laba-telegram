@@ -1,48 +1,48 @@
-import re
 from typing import Final
 
-from telegram import Update
-from telegram.ext import (Application, CommandHandler, ContextTypes,
-                          MessageHandler, ConversationHandler, filters)
+import logging
 
-from assets import days, start
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import (Application, CommandHandler, ContextTypes,
+                          MessageHandler, ConversationHandler, filters, CallbackQueryHandler)
+
+from assets import days
 from config import TELEGRAM_TOKEN
 from weatheroop import Forecast
+from laundryDB import LaundryDB
 
-import sqlite3
+# Enable logging
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
+)
+# set higher logging level for httpx to avoid all GET and POST requests being logged
+logging.getLogger("httpx").setLevel(logging.WARNING)
+
+logger = logging.getLogger(__name__)
 
 BOT_USERNAME: Final = '@canilababot'
-
 # Connect to database
-conn = sqlite3.connect("user_config.db", check_same_thread=False)
-cursor = conn.cursor()
-
-cursor.execute('''
-                CREATE TABLE IF NOT EXISTS user_laundry_days (
-               user_id TEXT PRIMARY KEY,
-               reminder_days TEXT
-                )
-               ''')
 
 # Commands
+
+SELECTING_ACTION, SET_DAYS, ADDING_DAYS, EXIT = 0, 1, 2, 3
 
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # TODO Prompt user to select location in start prompt
 
     user_id = update.message.chat_id
+    user_name = update.message.from_user.first_name
 
-    cursor.execute(
-        'SELECT * FROM user_laundry_days WHERE user_id = ?', (user_id,))
+    text: str = f'--------------\n👕👖👗\n\nHello {user_name}! I am the Laba Bot. 👋\nClick on the menu to access my commands.'
 
-    user_config = cursor.fetchone()
+    await update.message.reply_text(text)
 
-    if user_config:
-        print(f'Your laundry days are set to {user_config[1]}')
-    else:
-        print('You currently don\'t have any laundry days set. Use the /setlaundrydays command to set laundry days and automatically be sent a message if you can laba today.')
 
-    await update.message.reply_text(start.text)
+async def get_user_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    print(update.message.location)
+    await update.message.reply_text('Location received.')
 
 
 async def now_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -56,123 +56,175 @@ async def today_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     response_str: str = forecast.today()
     await update.message.reply_text(response_str)
 
-# TODO Allow user to set location
-# async def setlocation_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-#     user_location = update.message.location
-#     print(user_location)
-#     await update.message.reply_text(user_location)
 
+async def laundrydays_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-async def setlaundrydays_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # TODO Allow user to set through buttons or user input
-
-    # update.message essentially is the message sent by the user. So in this case, '/setlaundrydays'
     user_id = update.message.chat_id
 
-    # Check current laundry days of user
-    reminder_days = cursor.execute(
-        'SELECT reminder_days FROM user_laundry_days WHERE user_id=?', (user_id,)).fetchone()
+    db = LaundryDB()
+    set_days = db.get_day(user_id)
 
-    reminder_days = ''.join(map(str, reminder_days))
-    print(reminder_days, type(reminder_days))
+    if set_days == None:
+        keyboard = [
+            [
+                InlineKeyboardButton('Set', callback_data='setdays'),
+                InlineKeyboardButton('Exit', callback_data='exit')
+            ]
+        ]
 
-    output: str = f'Laundry day/s currently set to {reminder_days}.\n\n'
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        text: str = 'Set laundry days to be notified if you can laba on those days.'
 
-    if not reminder_days:
-        output += 'When do you want to be notified?\nType /cancel if you want to cancel.'
     else:
-        output += 'Enter new days if you want to update your laundry days.\nType /cancel if you want to cancel.'
+        keyboard = [
+            [
+                InlineKeyboardButton('Update', callback_data='setdays'),
+                InlineKeyboardButton('Clear', callback_data='clear')
+            ],
+            [
+                InlineKeyboardButton('Exit', callback_data='exit'),
+            ]
+        ]
 
-    output += '\n\nFollow the format: M, T, W, Th, F, Sa, Su\n\nYou may add more than one laundry day. Separate the days by a space.\n\nExample: "M Th Sa" (case insensitive)'
+        reply_markup = InlineKeyboardMarkup(keyboard, )
+        text: str = f'Your laundry days are set to {set_days}.'
 
-    await update.message.reply_text(output)
+    db.close()
+    await update.message.reply_text(text, reply_markup=reply_markup)
+    return SELECTING_ACTION
 
-    return 1
+
+async def setdays(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # nested conversation
+
+    query = update.callback_query
+    await query.answer()
+
+    keyboard = [
+        [
+            InlineKeyboardButton('Mon', callback_data='Mon'),
+            InlineKeyboardButton('Tue', callback_data='Tue'),
+            InlineKeyboardButton('Wed', callback_data='Wed'),
+        ],
+        [
+            InlineKeyboardButton('Thu', callback_data='Thu'),
+            InlineKeyboardButton('Fri', callback_data='Fri'),
+            InlineKeyboardButton('Sat', callback_data='Sat'),
+        ],
+        [
+            InlineKeyboardButton('Sun', callback_data='Sun'),
+            InlineKeyboardButton('Save', callback_data='save'),
+            InlineKeyboardButton('Exit', callback_data='exit'),
+        ]
+    ]
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    # user_data.update({REPEAT: False})
+    week_dict = {
+        'Mon': False,
+        'Tue': False,
+        'Wed': False,
+        'Thu': False,
+        'Fri': False,
+        'Sat': False,
+        'Sun': False
+    }
+
+    context.user_data['week_dict'] = week_dict
+
+    await query.edit_message_text('Choose your laundry days.', reply_markup=reply_markup)
+    print(context.user_data)
+
+    return SET_DAYS
 
 
-async def get_days(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # TODO Rejecting bad input
+async def choosing_day(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
 
-    user_input = update.message.text.lower()
-    user_id = update.message.chat_id
+    day = query.data
 
-    if user_input in ['cancel', '/cancel', 'q']:
-        await update.message.reply_text("Setting laundry days cancelled.")
-        return cancel()
+    print(f'Data received:\t{day}')
 
-    user_input = user_input.split()
-    user_input = list(set(user_input))
-    print(user_input, type(user_input))
+    # Add/remove checkmark of button if pressed.
+    context.user_data['week_dict'][day] = not context.user_data['week_dict'][day]
 
-    for day in user_input:
-        if day not in days.day_to_int.keys():
-            await update.message.reply_text('Invalid input. Try again.')
-            return 1
+    # Populate inline keyboard buttons.
+    keyboard = []
+    buttons = []
+    week_dict = context.user_data['week_dict']
 
-    days_int: list[int] = days.convert_to_int(user_input)
-    list.sort(days_int)
-    days_str = days.convert_to_day(days_int)
+    for k, v in week_dict.items():
+        if v == True:
+            buttons.append(InlineKeyboardButton(
+                f'✅ {k}', callback_data=k))
+        else:
+            buttons.append(InlineKeyboardButton(
+                f'{k}', callback_data=k))
 
-    print('days_int', days_int)
-    print('days_str', days_str)
+    # Add Save and Exit buttons at the end.
+    buttons.append(InlineKeyboardButton('Save', callback_data='save'))
+    buttons.append(InlineKeyboardButton('Exit', callback_data='exit'))
 
-    user_input = ' '.join(days_str)
-    # user_input = ' '.join(user_input)
+    # Prepare and set button placement, alignment.
+    keyboard = [buttons[i:i+3] for i in range(0, 9, 3)]
 
-    # Check if user has existing laundry days
-    cursor.execute(
-        'SELECT * FROM user_laundry_days WHERE user_id=?', (user_id,))
+    reply_markup = InlineKeyboardMarkup(keyboard)
 
-    if cursor.fetchone():
-        cursor.execute(
-            'UPDATE user_laundry_days SET reminder_days=? WHERE user_id=?', (user_input, user_id,))
-    else:
-        cursor.execute(
-            'INSERT INTO user_laundry_days (user_id, reminder_days) VALUES (?, ?)', (user_id, user_input,))
+    print(context.user_data)
 
-    conn.commit()
+    await query.edit_message_text('Choose your laundry days.', reply_markup=reply_markup)
+    return ADDING_DAYS
 
-    user_config = cursor.execute(
-        'SELECT * FROM user_laundry_days WHERE user_id=?', (user_id,))
 
-    print(user_config.fetchone())
+async def save(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    user_id = query.from_user.id
 
-    await update.message.reply_text(f'Laundry day/s set to {user_input}.')
+    await query.answer()
 
+    week_dict = context.user_data['week_dict']
+    print('Saving laundry days...')
+
+    db = LaundryDB()
+    db.save(user_id, week_dict)
+    db.close()
+
+    await query.edit_message_text('Saved laundry days.')
+
+    return EXIT
+
+
+async def clear(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    user_id = query.from_user.id
+    await query.answer()
+
+    db = LaundryDB()
+    db.delete_day(user_id)
+    db.close()
+
+    await query.edit_message_text('Cleared laundry days.')
+
+    return EXIT
+
+
+async def exit(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    await query.edit_message_text('Exited.')
+    return EXIT
+
+
+async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text('Cancelled.')
+    
     return ConversationHandler.END
 
-
-async def check_laundry_days(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
-    user_id = update.message.chat_id
-
-    reminder_days = cursor.execute(
-        'SELECT reminder_days FROM user_laundry_days WHERE user_id=?', (user_id,)).fetchone()
-
-    reminder_days = ' '.join(map(str, reminder_days))
-    print(reminder_days, type(reminder_days))
-
-    output: str = f'Laundry day/s currently set to {reminder_days}.'
-
-    await update.message.reply_text(output)
-
-    return reminder_days
-
-
-# TODO Add way to clear laundry days
-# async def clearlaundrydays_command():
-#   await update.message.reply_text('Laundry days cleared successfully. You will no longer be notified.')
-
-def cancel():
-    return ConversationHandler.END
-
-
-# TODO Check every morning if current day is reminder day. Send message if it is.
-# def do_reminders():
 
 
 # Responses
-
 
 def handle_response(text: str) -> str:  # How bot replies
     text = text.lower()
@@ -200,47 +252,75 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:  # If bot is in a private chat
         response: str = handle_response(text)
 
-    print(f'Bot: {response}')
+        if 'can i laba' in text:
+            await now_command(update, context)
+        else:
+            print(f'Bot: {response}')
+            await update.message.reply_text(response)
 
-    await update.message.reply_text(response)
 
 # Error
-
-
 async def error(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    print(f'Update {update} caused error \n{context.error}')
+    print(
+        f'Update {update} caused error \n{context.error.with_traceback}\n{context.error}')
 
 if __name__ == '__main__':
     print('Starting...')
     app = Application.builder().token(TELEGRAM_TOKEN).build()
 
-    # Commands
-
-    setlaundrydays_convhandler = ConversationHandler(
-        entry_points=[CommandHandler(
-            'setlaundrydays', setlaundrydays_command)],
-
+    set_days_conv = ConversationHandler(
+        entry_points=[CallbackQueryHandler(
+            choosing_day, pattern="^[A-z]{1}[a-z]{2}$")],
         states={
-            1: [MessageHandler(filters.TEXT, get_days)]
+            ADDING_DAYS: [
+                CallbackQueryHandler(
+                    choosing_day, pattern="^[A-z]{1}[a-z]{2}$"),
+                # [CallbackQueryHandler(choosing_days, '^[a-z]{3}$')]
+                CallbackQueryHandler(save, 'save'),
+                CallbackQueryHandler(exit, 'exit')
+            ],
+            EXIT: [
+                CallbackQueryHandler(cancel, 'save'),
+                CallbackQueryHandler(cancel, 'exit'),
+            ]
         },
+        fallbacks=[CommandHandler('cancel', cancel)],
+        map_to_parent={
+            EXIT: EXIT
+        }
+    )
 
+    # Top Level
+    laundrydays_convhandler = ConversationHandler(
+        entry_points=[CommandHandler('laundrydays', laundrydays_command)],
+        states={
+            SELECTING_ACTION: [
+                CallbackQueryHandler(setdays, 'setdays'),
+                CallbackQueryHandler(clear, 'clear'),
+                CallbackQueryHandler(exit, 'exit')
+            ],
+            SET_DAYS: [set_days_conv],
+            EXIT: [CommandHandler('cancel', cancel)]
+        },
         fallbacks=[CommandHandler('cancel', cancel)]
     )
 
+    # Commands
     app.add_handler(CommandHandler('start', start_command))
     app.add_handler(CommandHandler('now', now_command))
     app.add_handler(CommandHandler('today', today_command))
-    # app.add_handler(CommandHandler('setlocation', setlocation_command))
-    # app.add_handler(CommandHandler('cancel', cancel))
-    app.add_handler(CommandHandler('checklaundrydays', check_laundry_days))
-    app.add_handler(setlaundrydays_convhandler)
+    app.add_handler(CommandHandler('cancel', cancel))
+
+    # Conversations
+    app.add_handler(laundrydays_convhandler)
 
     # Messages
-    app.add_handler(MessageHandler(filters.TEXT, handle_message))
+    app.add_handler(MessageHandler(
+        filters.TEXT & ~filters.COMMAND, handle_message))
 
     # Errors
     app.add_error_handler(error)
 
     # Polling
     print('Polling...')
-    app.run_polling(poll_interval=3)
+    app.run_polling(poll_interval=1)

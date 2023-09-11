@@ -7,13 +7,11 @@ from config import OPEN_METEO_KEY
 from WMO_CODES import WMO_CODES
 
 # TODO Find better logic to determine if you can laba : can_laba()
-# TODO Let user choose location, right now it's hardcoded
 
 
 class Forecast:
     def __init__(self) -> None:
         self.forecast: dict = dict()  # 2-day forecast
-        self.now_forecast: dict = dict()  # forecast when now() is called
 
     def __str__(self) -> str:
         text: str = "FORECAST\n"
@@ -44,7 +42,7 @@ class Forecast:
 
         return text
 
-    def weather(self) -> None:
+    def get_weather(self) -> None:
         """
         OpenMeteo API Call to get 2 days worth of hourly weather data.
 
@@ -56,10 +54,10 @@ class Forecast:
 
         Dictionary structure:
         {
-            'time': [1,2,3,...],
-            'weathercode': [0,1,2,...],
-            'temperature_2m': [0,1,2,...],
-            'precipitation_probability': [0,1,2,..]
+            'time': [00:00,01:00,02:00,...],
+            'weathercode': [0,1,0,...],
+            'temperature_2m': [32,31,35,...],
+            'precipitation_probability': [0,23,40,..]
         }
         """
         response: requests.Response = requests.get(OPEN_METEO_KEY)
@@ -121,32 +119,31 @@ class Forecast:
     def now(self) -> str:
         text: str = 'FORECAST\n'
 
-        self.weather()  # Get fresh weather data
-        self.now_forecast.clear()  # Reset self.now_forecast dictionary
+        self.get_weather()  # Get fresh weather data
 
         now: dt = dt.now()  # Get current datetime
 
-        # Round up hour, if > 30 minutes.
+        # Get forecast of next 6 hours if minute > 30 minutes. Else, 5 hours
         if now.minute > 30:
             next_idx: int = 6
-            rounded_now: dt = dt(now.year, now.month, now.day, now.hour + 1)
+            now: dt = dt(now.year, now.month, now.day, now.hour + 1)
         else:
             next_idx: int = 5
-            rounded_now: dt = dt(now.year, now.month, now.day, now.hour)
+            now: dt = dt(now.year, now.month, now.day, now.hour)
 
         # Convert datetime object to isoformat. Removing seconds.
-        iso_now: dt = rounded_now.isoformat()[:-3]
+        iso_now: dt = now.isoformat()[:-3]
 
-        # Find current time in forecast.
+        # Get index of current time in forecast.
         now_idx: int = self.forecast["time"].index(iso_now)
 
         next_idx += now_idx  # Index range to extract 5 or 6-hour forecast.
 
-        self.now_forecast = self.extract_forecast(
-            self.forecast, now_idx, next_idx)
+        now_forecast = self.extract_forecast(
+            self.forecast, now_idx, next_idx)  # Get forecast data starting from now_idx to next_idx
 
         # Display forecast
-        text += self.display_forecast(self.now_forecast) + "\n"
+        text += self.display_forecast(now_forecast) + "\n"
 
         # Automatically return false if earlier than 06:00 or later than 15:00
         if 0 <= now.hour < 6:
@@ -155,18 +152,18 @@ class Forecast:
         elif 15 <= now.hour <= 23:
             text += f"It's {now.hour-12} PM. Laba tomorrow."
             return text
-
-        # Can I laba now?
-        if self.can_laba(self.now_forecast):
-            text += "Yes, you can laba right now."
-            return text
         else:
-            text += "No, you can't laba right now"
-            return text
+            # Can I laba now?
+            if self.can_laba(now_forecast):
+                text += "Yes, you can laba right now."
+                return text
+            else:
+                text += "No, you can't laba right now"
+                return text
 
-    def today(self) -> None:
+    def today(self) -> str:
         text: str = 'TODAY\'S FORECAST\n'
-        self.weather()
+        self.get_weather()
 
         morning_forecast: dict = self.extract_forecast(self.forecast, 6, 11)
         noon_forecast: dict = self.extract_forecast(self.forecast, 11, 15)
