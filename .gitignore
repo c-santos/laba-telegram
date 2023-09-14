@@ -1,10 +1,10 @@
 /.vs
 config.py
 /.vscode
-tester.py
 test.py
 __pycache__
 tasks.md
 /.venv
 user_config.db
 user_config.sqlite
+weather.py
