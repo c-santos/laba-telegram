@@ -1,13 +1,11 @@
-import json
 from datetime import datetime as dt
 
 import requests
 
 from config import OPEN_METEO_KEY
-from WMO_CODES import WMO_CODES
+from assets.WMO_CODES import WMO_CODES
 
 # TODO Find better logic to determine if you can laba : can_laba()
-
 
 class Forecast:
     def __init__(self) -> None:
@@ -162,7 +160,8 @@ class Forecast:
                 return text
 
     def today(self) -> str:
-        text: str = 'TODAY\'S FORECAST\n'
+        today = dt.today()
+        text: str = f'TODAY\'S FORECAST ({today.date()})\n'
         self.get_weather()
 
         morning_forecast: dict = self.extract_forecast(self.forecast, 6, 11)
