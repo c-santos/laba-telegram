@@ -1,12 +1,13 @@
 import sqlite3
 
-
 class LaundryDB:
-
     def __init__(self, dbname='user_config.sqlite'):
-        self.dbname = dbname
-        self.conn = sqlite3.connect(dbname)
-        self._setup()
+        try: 
+            self.conn = sqlite3.connect(dbname)
+            self._setup()
+            print('Connection to DB successful.')
+        except Exception as e:
+            print(e)
 
     def _setup(self) -> None:
         qry = '''
@@ -21,6 +22,14 @@ class LaundryDB:
 
         except Exception as e:
             print(e)
+
+    def dump(self) -> list[any]:
+        qry = 'SELECT * FROM user_laundry_days'
+        cursor = self.conn.execute(qry)
+        data = cursor.fetchall()
+        print(data)
+
+        return data
 
     def set_day(self, user_id, days) -> None:
 
@@ -51,7 +60,7 @@ class LaundryDB:
             print(f'{user_id} does not exist. Adding instead.')
             self.set_day(user_id, days)
 
-    def delete_day(self, user_id) -> None:
+    def delete_entry(self, user_id) -> None:
         qry = "DELETE FROM user_laundry_days WHERE user_id=?"
         args = (user_id, )
 
@@ -59,25 +68,36 @@ class LaundryDB:
         self.conn.commit()
         print(f'Entry of {user_id} deleted.')
 
+    def clear_day(self, user_id) -> None:
+        qry = "UPDATE user_laundry_days SET laundry_days=NULL WHERE user_id=?"
+        args = (user_id,)
+
+        self.conn.execute(qry, args)
+        self.conn.commit()
+        print(f'Cleared laundry days column of {user_id}.')
+
     def get_day(self, user_id) -> any:
         try:
             qry = 'SELECT laundry_days FROM user_laundry_days WHERE user_id=?'
             args = (user_id, )
+
             cursor = self.conn.execute(qry, args)
             data = cursor.fetchone()
-            print(f'{data} for {user_id}.')
+            
+            # print(f'{user_id}:{data[0]}.')
 
+            # print(data, type(data), data[0], type(data[0]))
             return data
 
         except sqlite3.OperationalError as e:
             print(e)
             return None
 
-    def save(self, user_id, data: dict) -> None:
+    def save(self, user_id, week_dict: dict) -> None:
 
         # Parse dictionary
-        days = [k for k, v in data.items() if v == True]
-        days = ','.join(days)
+        days = [day for day, value in week_dict.items() if value == True]
+        days = ' '.join(days)
 
         # Set/update
         self.set_day(user_id, days)
@@ -86,3 +106,4 @@ class LaundryDB:
 
     def close(self) -> None:
         self.conn.close()
+        print('Connection to DB closed.')
