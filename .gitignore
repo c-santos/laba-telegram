@@ -8,3 +8,4 @@ tasks.md
 user_config.db
 user_config.sqlite
 weather.py
+.env
