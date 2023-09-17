@@ -1,11 +1,10 @@
-# OpenMeteo time format ISO8601: "YYYY-MM-DDTHH:MM" where T is the separator
-
 import requests, json
 from datetime import datetime
 from config import OPEN_METEO_KEY
-from WMO_CODES import WMO_CODES
+from assets.WMO_CODES import WMO_CODES
 
-LABA_THRESHOLD = 0.5 # 50% precipitation chance
+# OpenMeteo time format ISO8601: "YYYY-MM-DDTHH:MM" where T is the separator
+
 
 def jprint(obj):
     text = json.dumps(obj, sort_keys=True, indent=4)
