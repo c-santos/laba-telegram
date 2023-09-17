@@ -2,7 +2,7 @@ from datetime import datetime as dt
 
 import requests
 
-from assets.WMO_CODES import WMO_CODES
+from util.WMO_CODES import WMO_CODES
 
 
 class Forecast:

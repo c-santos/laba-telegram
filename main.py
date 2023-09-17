@@ -21,9 +21,9 @@ from telegram.ext import (
     filters,
 )
 from dotenv import load_dotenv
-from laundryDB import LaundryDB
+from db.laundryDB import LaundryDB
 from forecast import Forecast
-from weekday import is_equal
+from util.weekday import is_equal
 
 # Enable logging
 logging.basicConfig(

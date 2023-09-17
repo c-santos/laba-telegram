@@ -1,11 +1,9 @@
 /.vs
-config.py
+/util/config.py
 /.vscode
 test.py
 __pycache__
 tasks.md
 /.venv
-user_config.db
-user_config.sqlite
-weather.py
+/db/user_config.sqlite
 .env
