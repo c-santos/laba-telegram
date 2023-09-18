@@ -21,7 +21,7 @@ from telegram.ext import (
     filters,
 )
 from dotenv import load_dotenv
-from db.laundryDB import LaundryDB
+from laundryDB import LaundryDB
 from forecast import Forecast
 from util.weekday import is_equal
 
@@ -39,30 +39,22 @@ SELECTING_ACTION, SET_DAYS, ADDING_DAYS = map(chr, range(3))
 EXIT = ConversationHandler.END
 
 """
-    ADD SET LOCATION FUNCTIONALITY
-    - Add location=(lon,lat) to database
-    - Ask location from user on /start
-    - Add location as an attribute of Forecast object
-        - lon, lat as variables into OPEN_METEO_API url
-    
-    WHERE WE LEFT OFF:
-    - Restructuring DBHelper
-        - decouple setup()
-        - add_user() error handling
-        - cleanup getters, up/setters, deleters
+    TODO Redo database
+        TODO user_profile
+                - user_id PRIMARY KEY
+                - first name
+                - full name
+                - lon
+                - lat
+        TODO user_laundry_days
+                - user_id FOREIGN KEY
+                - laundrydays
 
-    - What if laundrydays of user is empty? What happens during the daily notif?
-        - Try getting days, and if does not exist, do nothing basically
-        - Error handling
-
-    - Restructure Forecast object
-        - attr, properties
+    Check python-telegram-bot wiki for deployment options.
 """
 
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # TODO Prompt user to select location in start prompt
-
     user_id = update.message.chat_id
     user_name = update.message.from_user.first_name
 
@@ -411,8 +403,8 @@ def main():
     app = Application.builder().token(TELEGRAM_TOKEN).build()
 
     job_queue = app.job_queue
-    # notify_job = job_queue.run_daily(notify, dt.time(hour=6, minute=0))
-    notify_job = job_queue.run_repeating(notify, interval=50, first=10)
+    notify_job = job_queue.run_daily(notify, dt.time(hour=6, minute=0))
+    # notify_job = job_queue.run_repeating(notify, interval=50, first=10)
 
     # CallbackQueryHandler(A, B) : If B is received from a button, A will be called
 

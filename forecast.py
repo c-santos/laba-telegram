@@ -2,7 +2,37 @@ from datetime import datetime as dt
 
 import requests
 
-from util.WMO_CODES import WMO_CODES
+WMO_CODES = {
+    0: "☼ Clear sky",
+    1: "🌤 Mainly clear",
+    2: "⛅ Partly cloudy",
+    3: "☁ Overcast",
+    45: "Fog",
+    48: "Depositing rime fog",
+    51: "☂ Light drizzle",
+    53: "☔ Fair drizzle",
+    55: "🌦 Dense drizzle",
+    56: "Freezing drizzle: Light intensity",
+    57: "Freezing drizzle: Dense intensity",
+    61: "☔ Light rain",
+    63: "🌧 Moderate rain",
+    65: "🌧 Heavy rain",
+    66: "Freezing rain: Light intensity",
+    67: "Freezing rain: Heavy intensity",
+    71: "Snow fall: Slight intensity",
+    73: "Snow fall: Moderate intensity",
+    75: "Snow fall: Heavy intensity",
+    77: "Snow grains",
+    80: "🌦 Light showers",
+    81: "🌦 Moderate showers",
+    82: "🌦 Violent showers",
+    85: "Snow showers: Slight intensity",
+    86: "Snow showers: Heavy intensity",
+    95: "⛈ Thunderstorm",
+    96: "⛈ Thunderstorm with hail",
+    97: "⛈ Heavy thunderstorm",
+    98: "⛈ Heavy thunderstorm with hail",
+}
 
 
 class Forecast:
@@ -147,7 +177,10 @@ class Forecast:
         text += self.display_forecast(now_forecast) + "\n"
 
         # Automatically return false if earlier than 06:00 or later than 15:00
-        if 0 <= now.hour < 6:
+        if now.hour == 0:
+            text += f"It's 12 AM. Check again later."
+            return text
+        elif 0 < now.hour < 6:
             text += f"It's {now.hour} AM. Check again later."
             return text
         elif 15 <= now.hour <= 23:
