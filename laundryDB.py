@@ -35,6 +35,10 @@ class LaundryDB:
         except Exception as e:
             logger.error(e)
 
+    def close(self) -> None:
+        self._conn.close()
+        logger.info("Connection to DB closed.")
+
     def add_user(self, user_id: int):
         qry: str = "INSERT INTO user_laundry_days (user_id) VALUES (?)"
         args: tuple[int] = (user_id,)
@@ -46,6 +50,14 @@ class LaundryDB:
         except Exception as e:
             logger.error(e)
 
+    def delete_entry(self, user_id: int) -> None:
+        qry: str = "DELETE FROM user_laundry_days WHERE user_id=?"
+        args: tuple[int] = (user_id,)
+
+        self._conn.execute(qry, args)
+        self._conn.commit()
+        logger.info(f"Entry of {user_id} deleted.")
+
     def dump(self) -> list[any]:
         qry: str = "SELECT * FROM user_laundry_days"
         cursor: sqlite3.Cursor = self._conn.execute(qry)
@@ -53,6 +65,8 @@ class LaundryDB:
         logger.debug(data)
 
         return data
+
+    # -------------------LAUNDRY DAY FUNCTIONS
 
     def set_day(self, user_id: int, days: str) -> None:
         if self.get_day(user_id) == None:
@@ -88,14 +102,6 @@ class LaundryDB:
             logger.debug(f"{user_id} does not exist. Adding instead.")
             self.set_day(user_id, days)
 
-    def delete_entry(self, user_id: int) -> None:
-        qry: str = "DELETE FROM user_laundry_days WHERE user_id=?"
-        args: tuple[int] = (user_id,)
-
-        self._conn.execute(qry, args)
-        self._conn.commit()
-        logger.info(f"Entry of {user_id} deleted.")
-
     def clear_day(self, user_id: int) -> None:
         qry: str = "UPDATE user_laundry_days SET laundry_days=NULL WHERE user_id=?"
         args: tuple[int] = (user_id,)
@@ -103,6 +109,16 @@ class LaundryDB:
         self._conn.execute(qry, args)
         self._conn.commit()
         logger.info(f"Cleared laundry days column of {user_id}.")
+
+    def save_day(self, user_id: int, week_dict: dict) -> None:
+        # Parse dictionary
+        days: list[str] = [day for day, value in week_dict.items() if value == True]
+        days: str = " ".join(days)
+
+        # Set/update
+        self.set_day(user_id, days)
+
+        logger.info(days)
 
     def get_day(self, user_id) -> any:
         try:
@@ -117,6 +133,8 @@ class LaundryDB:
         except sqlite3.OperationalError as e:
             logger.error(e)
             return None
+
+    # --------------------LOCATION FUNCTIONS
 
     def save_location(self, user_id: int, lon: float, lat: float) -> None:
         qry: str = """
@@ -161,20 +179,6 @@ class LaundryDB:
         except sqlite3.OperationalError as e:
             logger.error(e)
             return None
-
-    def save(self, user_id: int, week_dict: dict) -> None:
-        # Parse dictionary
-        days: list[str] = [day for day, value in week_dict.items() if value == True]
-        days: str = " ".join(days)
-
-        # Set/update
-        self.set_day(user_id, days)
-
-        logger.info(days)
-
-    def close(self) -> None:
-        self._conn.close()
-        logger.info("Connection to DB closed.")
 
 
 if __name__ == "__main__":

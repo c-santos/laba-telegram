@@ -1,6 +1,6 @@
 import os
 import logging
-from datetime import datetime as dt
+from datetime import time, timezone, timedelta
 from typing import Final
 
 from telegram import (
@@ -19,11 +19,12 @@ from telegram.ext import (
     ConversationHandler,
     MessageHandler,
     filters,
+    Defaults,
 )
 from dotenv import load_dotenv
 from laundryDB import LaundryDB
 from forecast import Forecast
-from util.weekday import is_equal
+from weekday import is_equal
 
 # Enable logging
 logging.basicConfig(
@@ -39,24 +40,16 @@ SELECTING_ACTION, SET_DAYS, ADDING_DAYS = map(chr, range(3))
 EXIT = ConversationHandler.END
 
 """
-    TODO Redo database
-        TODO user_profile
-                - user_id PRIMARY KEY
-                - first name
-                - full name
-                - lon
-                - lat
-        TODO user_laundry_days
-                - user_id FOREIGN KEY
-                - laundrydays
-
-    Check python-telegram-bot wiki for deployment options.
+    Save user timezone information to database.
 """
 
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.chat_id
     user_name = update.message.from_user.first_name
+    timezone = context.bot.defaults.tzinfo
+
+    await context.bot.send_message(chat_id=user_id, text=f"Bot default tz: {timezone}")
 
     db = LaundryDB()
     db.add_user(user_id)
@@ -275,7 +268,7 @@ async def save(update: Update, context: ContextTypes.DEFAULT_TYPE):
     week_dict = context.user_data["week_dict"]
 
     db = LaundryDB()
-    db.save(user_id, week_dict)
+    db.save_day(user_id, week_dict)
     db.close()
 
     await query.edit_message_text("Saved laundry days.")
@@ -395,15 +388,18 @@ async def error(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 def main():
+    logger.info("Starting...")
     load_dotenv()
-
     TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 
-    logger.info("Starting...")
-    app = Application.builder().token(TELEGRAM_TOKEN).build()
+    tz: timezone = timezone(offset=timedelta(hours=8))
+
+    defaults = Defaults(tzinfo=tz)
+
+    app = Application.builder().token(TELEGRAM_TOKEN).defaults(defaults).build()
 
     job_queue = app.job_queue
-    notify_job = job_queue.run_daily(notify, dt.time(hour=6, minute=0))
+    notify_job = job_queue.run_daily(notify, time(6, 0, 0, tzinfo=tz))
     # notify_job = job_queue.run_repeating(notify, interval=50, first=10)
 
     # CallbackQueryHandler(A, B) : If B is received from a button, A will be called

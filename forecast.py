@@ -1,5 +1,4 @@
-from datetime import datetime as dt
-
+from datetime import datetime as dt, timezone, timedelta
 import requests
 
 WMO_CODES = {
@@ -40,6 +39,8 @@ class Forecast:
         self.forecast: dict = dict()  # 3-day forecast
         self.lon: float = lon
         self.lat: float = lat
+        self.tz: timezone = timezone(timedelta(hours=8))
+
         self._OPEN_METEO_API = f"https://api.open-meteo.com/v1/forecast?latitude={self.lat}&longitude={self.lon}&hourly=temperature_2m,precipitation_probability,weathercode&forecast_days=3"
 
     def __str__(self) -> str:
@@ -151,7 +152,7 @@ class Forecast:
 
         self.get_weather()  # Get fresh weather data
 
-        now: dt = dt.now()  # Get current datetime
+        now: dt = dt.now(tz=self.tz)  # Get current datetime
 
         # Get forecast of next 6 hours if minute > 30 minutes. Else, 5 hours
         if now.minute > 30:
@@ -196,7 +197,7 @@ class Forecast:
                 return text
 
     def today(self) -> str:
-        today = dt.today()
+        today = dt.now(tz=self.tz)
         text: str = f"TODAY'S FORECAST ({today.date()})\n"
         self.get_weather()
 
@@ -222,3 +223,4 @@ if __name__ == "__main__":
     lat = 14.5786
     f = Forecast(lon, lat)
     print(f.now())
+    print(f.today())
