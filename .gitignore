@@ -1,9 +1,7 @@
 /.vs
-/util/config.py
 /.vscode
 test.py
 __pycache__
-tasks.md
 /.venv
-/db/user_config.sqlite
+user_config.sqlite
 .env
